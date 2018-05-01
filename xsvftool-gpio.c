@@ -43,6 +43,8 @@
 #define OUT_GPIO(g) *(gpio+((g)/10)) |=  (1<<(((g)%10)*3))
 #define SET_GPIO_ALT(g,a) *(gpio+(((g)/10))) |= (((a)<=3?(a)+4:(a)==4?3:2)<<(((g)%10)*3))
 
+#define GPIO_REG(g) *(gpio+(((g)/10)))
+
 #define GPIO_SET0   *(gpio+7)  // Set GPIO high bits 0-31
 #define GPIO_SET1   *(gpio+8)  // Set GPIO high bits 32-53
 
@@ -56,13 +58,11 @@
 #define TCK_PIN 22
 #define TDO_PIN 23
 
-static volatile struct io_layout *io_direction;
-static volatile struct io_layout *io_opendrain;
-static volatile struct io_layout *io_data;
-
 int  mem_fd;
-char *gpio_mem, *gpio_map;
+unsigned char *gpio_mem, *gpio_map;
 volatile unsigned *gpio;
+
+unsigned cfg_save[4] ;
 
 static void io_setup(void)
 {
@@ -98,6 +98,26 @@ static void io_setup(void)
 	}
 	gpio = (volatile unsigned *)gpio_map;
 
+	for(int i = 0; i < 4 ; i ++){
+		switch(i){
+			case 0:	
+				cfg_save[i] = GPIO_REG(TDI_PIN);
+				break ;
+			case 1:
+				cfg_save[i] = GPIO_REG(TDO_PIN);
+				break ;
+			case 2:
+				cfg_save[i] = GPIO_REG(TMS_PIN);
+				break ;
+			case 3:
+                                cfg_save[i] = GPIO_REG(TCK_PIN);
+                                break ;
+			default: 
+				break ;
+		};
+	}
+
+
 	INP_GPIO(TDI_PIN);  OUT_GPIO(TDI_PIN);
 	INP_GPIO(TMS_PIN);  OUT_GPIO(TMS_PIN);
 	INP_GPIO(TCK_PIN);  OUT_GPIO(TCK_PIN);
@@ -107,6 +127,24 @@ static void io_setup(void)
 
 static void io_shutdown(void)
 {
+	for(int i = 0; i < 4 ; i ++){
+		switch(i){
+			case 0:
+				GPIO_REG(TDI_PIN) = cfg_save[i] ;
+				break ;
+			case 1:
+				GPIO_REG(TDO_PIN) = cfg_save[i] ;
+				break ;
+			case 2:
+				GPIO_REG(TMS_PIN) = cfg_save[i] ;
+				break ;
+			case 3:
+                                GPIO_REG(TCK_PIN) = cfg_save[i] ;
+                                break ;
+			default: 
+				break ;
+		};
+	}
 	munmap(gpio_map,BLOCK_SIZE);
 }
 
