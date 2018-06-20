@@ -168,10 +168,10 @@ static void io_tdi(int val)
 
 static void io_tck(int val)
 {
+	volatile int i = 20 ;
 	if(val == 0)GPIO_CLR0 = (1<<TCK_PIN);
 	else GPIO_SET0 = (1<<TCK_PIN);
-	//usleep(0);
-	//nanosleep(&sleep_freq, NULL);
+	while(i > 0) i -- ;
 }
 
 static void io_sck(int val)
@@ -269,7 +269,6 @@ static int h_getbyte(struct libxsvf_host *h)
 static int h_pulse_tck(struct libxsvf_host *h, int tms, int tdi, int tdo, int rmask, int sync)
 {
 	struct udata_s *u = h->user_data;
-	volatile int i = 30 ;
 	io_tms(tms);
 
 	if (tdi >= 0) {
@@ -278,8 +277,6 @@ static int h_pulse_tck(struct libxsvf_host *h, int tms, int tdi, int tdo, int rm
 	}
 
 	io_tck(0);
-	while(i > 0) i -- ;
-	//asm("nop;nop;nop;nop;nop;nop;nop;nop;nop;nop");
 	io_tck(1);
 
 	int line_tdo = io_tdo();
@@ -299,8 +296,6 @@ static int h_pulse_tck(struct libxsvf_host *h, int tms, int tdi, int tdo, int rm
 	}
 
 	u->clockcount++;
-	i = 10 ;
-	while(i > 0) i -- ;
 	return rc;
 }
 
