@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <sys/mman.h>
 #include <fcntl.h>
+#include <time.h>
 
 #define BCM2708_PERI_BASE        0x3F000000
 #define GPIO_BASE                (BCM2708_PERI_BASE + 0x200000) /* GPIO   */
@@ -63,6 +64,9 @@ unsigned char *gpio_mem, *gpio_map;
 volatile unsigned *gpio;
 
 unsigned cfg_save[4] ;
+
+
+struct timespec sleep_freq ;
 
 static void io_setup(void)
 {
@@ -152,18 +156,22 @@ static void io_tms(int val)
 {
 	if(val == 0)GPIO_CLR0 = (1<<TMS_PIN);
 	else GPIO_SET0 = (1<<TMS_PIN);
+	//nanosleep(&sleep_freq, NULL);
 }
 
 static void io_tdi(int val)
 {
 	if(val == 0)GPIO_CLR0 = (1<<TDI_PIN);
 	else GPIO_SET0 = (1<<TDI_PIN);
+	//nanosleep(&sleep_freq, NULL);
 }
 
 static void io_tck(int val)
 {
 	if(val == 0)GPIO_CLR0 = (1<<TCK_PIN);
 	else GPIO_SET0 = (1<<TCK_PIN);
+	//usleep(0);
+	//nanosleep(&sleep_freq, NULL);
 }
 
 static void io_sck(int val)
@@ -261,7 +269,7 @@ static int h_getbyte(struct libxsvf_host *h)
 static int h_pulse_tck(struct libxsvf_host *h, int tms, int tdi, int tdo, int rmask, int sync)
 {
 	struct udata_s *u = h->user_data;
-
+	volatile int i = 30 ;
 	io_tms(tms);
 
 	if (tdi >= 0) {
@@ -270,6 +278,8 @@ static int h_pulse_tck(struct libxsvf_host *h, int tms, int tdi, int tdo, int rm
 	}
 
 	io_tck(0);
+	while(i > 0) i -- ;
+	//asm("nop;nop;nop;nop;nop;nop;nop;nop;nop;nop");
 	io_tck(1);
 
 	int line_tdo = io_tdo();
@@ -289,6 +299,8 @@ static int h_pulse_tck(struct libxsvf_host *h, int tms, int tdi, int tdo, int rm
 	}
 
 	u->clockcount++;
+	i = 10 ;
+	while(i > 0) i -- ;
 	return rc;
 }
 
@@ -313,6 +325,9 @@ static void h_set_trst(struct libxsvf_host *h, int v)
 
 static int h_set_frequency(struct libxsvf_host *h, int v)
 {
+	/*sleep_freq.tv_sec = 0 ;
+	sleep_freq.tv_nsec = 500000000L/v ;
+	*/
 	fprintf(stderr, "WARNING: Setting JTAG clock frequency to %d ignored!\n", v);
 	return 0;
 }
@@ -425,6 +440,8 @@ int main(int argc, char **argv)
 	int hex_mode = 0;
 	const char *realloc_name = NULL;
 	int opt, i, j;
+	sleep_freq.tv_sec = 0 ;
+        sleep_freq.tv_nsec = 5 ;
 
 	progname = argc >= 1 ? argv[0] : "xvsftool";
 	while ((opt = getopt(argc, argv, "r:vLBx:s:c")) != -1)
